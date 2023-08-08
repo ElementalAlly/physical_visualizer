@@ -89,12 +89,63 @@ float Approx_FFT(int in[],int N,float Frequency) {
          o=i;
       }
    }
-
-   system_ticks.tick_all();
-
    a=Pow2[o];
    int out_r[a];   //real part of transform
    int out_im[a];  //imaginory part of transform
+
+   for(int i=0;i<a;i++) {                //getting min max and average for scalling
+      out_r[i]=0; out_im[i]=0;
+      data_avg=data_avg+in[i];
+      if(in[i]>data_max){data_max=in[i];}
+      if(in[i]<data_min){data_min=in[i];}
+   }
+
+   data_avg=data_avg>>o;
+   scale=0;
+   data_mag=data_max-data_min;
+   temp11=data_mag;
+
+   //scaling data  from +512 to -512
+
+   if(data_mag>1024) {
+      while(temp11>1024) {
+         temp11=temp11>>1;
+         scale=scale+1;
+      }
+   }
+
+   if(data_mag<1024) {
+      while(temp11<1024) {
+         temp11=temp11<<1;
+         scale=scale+1;
+      }
+   }
+
+
+   if(data_mag>1024) {
+      for(int i=0;i<a;i++) {
+         in[i]=in[i]-data_avg;
+         in[i]=in[i]>>scale;
+      }
+      scale=128-scale;
+   }
+
+   if(data_mag<1024) {
+      scale=scale-1;
+      for(int i=0;i<a;i++) {
+         in[i]=in[i]-data_avg;
+         in[i]=in[i]<<scale;
+      }
+      scale=128+scale;
+   }
+
+   for(int i=0;i<12;i++) {                 //calculating the levels
+      if(Pow2[i]<=N) {
+         o=i;
+      }
+   }
+
+   system_ticks.tick_all();
 
    x=0;
    for(int b=0;b<o;b++) {                    // bit reversal order stored in im_out array
@@ -461,6 +512,7 @@ class sampler{
 };
 
 stepper myStepper(7, 6, 5, 4);
+stepper stepper2(14, 15, 16, 17);
 sampler mySampler(A1);
 int system_len = 1;
 
@@ -519,6 +571,7 @@ void loop() {
       while(1); */
       //Serial.println(2038 / 2 * max((peaks[4] - 1000) / 4000, 0));
       myStepper.setTarget(peaks[4]);//(int)(2038 / 2 * max((peaks[4] - 1000) / 4000, 0)));
+      stepper2.setTarget(peaks[5]);
       /*uint16_t EndTime = TCNT1;
       uint16_t eta = EndTime - StartTime;
       Serial.println(eta); */
