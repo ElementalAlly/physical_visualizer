@@ -23,8 +23,8 @@ const int16_t sample_power = 9;
 const int samplingFrequency = 44100;
 const int clockFrequency = 16000000;
 
-const double signalFrequency = 15000;
-const uint8_t amplitude = 250;
+const double signalFrequency = 1000;
+const uint8_t amplitude = 5;
 double cycles = (((samples-1) * signalFrequency) / samplingFrequency);
 const int sin_samples[4] = {0, 1, 0, -1};
 
@@ -33,7 +33,6 @@ float frequency = 44000; // Actually useless for our test.
 const int stepsPerRevolution = 2038;
 
 const int tickTime = 5;
-
 
 int vReal[samples];
 int16_t vImag[samples];
@@ -45,6 +44,35 @@ int stepperStates[4][4] = {
   {0, 0, 1, 0},
   {0, 0, 0, 1}
 };
+
+class high_priority_ticks {
+   public:
+      uint16_t tick_amount = 0;
+      int prevTime = 0;
+      virtual void tick(uint16_t time) {
+         if(time - prevTime >= tick_amount) {
+            prevTime = TCNT1;
+         }
+      }
+};
+
+class tick_system {
+   public:
+      high_priority_ticks* objects[10];
+      int num_objects = 0;
+      tick_system() {}
+      void add_obj(high_priority_ticks* tick_object) {
+         objects[num_objects] = tick_object;
+         num_objects += 1;
+      }
+      void tick_all() {
+         for (int i = 0; i < num_objects; i++) {
+            objects[i]->tick(TCNT1);
+         }
+      }
+};
+
+tick_system system_ticks;
 
 float Approx_FFT(int in[],int N,float Frequency) {
    uint16_t StartTime = TCNT1;
@@ -61,6 +89,9 @@ float Approx_FFT(int in[],int N,float Frequency) {
          o=i;
       }
    }
+
+   system_ticks.tick_all();
+
    a=Pow2[o];
    int out_r[a];   //real part of transform
    int out_im[a];  //imaginory part of transform
@@ -72,14 +103,14 @@ float Approx_FFT(int in[],int N,float Frequency) {
       for(int j=0;j<c1;j++) {
          x=x+1;
          out_im[x]=out_im[j]+f;
-         steppers.tick(TCNT1);
+         system_ticks.tick_all();
       }
    }
 
    for(int i=0;i<a;i++) {           // update input array as per bit reverse order
       out_r[i]=in[out_im[i]];
       out_im[i]=0;
-      steppers.tick(TCNT1);
+      system_ticks.tick_all();
    }
 
    uint16_t EndTime = TCNT1;
@@ -96,7 +127,7 @@ float Approx_FFT(int in[],int N,float Frequency) {
       e=1024/Pow2[i+1];  //1024 is equivalent to 360 deg
       e=0-e;
       n1=0;
-      steppers.tick(TCNT1);
+      system_ticks.tick_all();
 
       for(int j=0;j<i10;j++) {
          c=e*j;    //c is angle as where 1024 unit is 360 deg
@@ -106,9 +137,10 @@ float Approx_FFT(int in[],int N,float Frequency) {
          while(c>1024) {
             c=c-1024;
          }
-         steppers.tick(TCNT1);
 
          n1=j;
+
+         system_ticks.tick_all();
 
          for(int k=0;k<i11;k++) {
             temp4=i10+n1;
@@ -136,7 +168,8 @@ float Approx_FFT(int in[],int N,float Frequency) {
                tr=fast_cosine(out_r[temp4],c)-fast_sine(out_im[temp4],c);            //the fast sine/cosine function gives direct (approx) output for A*sinx
                ti=fast_sine(out_r[temp4],c)+fast_cosine(out_im[temp4],c);
             }
-            steppers.tick(TCNT1);
+
+            system_ticks.tick_all();
 
             out_r[n1+i10]=out_r[n1]-tr;
             out_r[n1]=out_r[n1]+tr;
@@ -158,6 +191,7 @@ float Approx_FFT(int in[],int N,float Frequency) {
          for(int i=0;i<a;i++) {
             out_r[i]=out_r[i]>>1;
             out_im[i]=out_im[i]>>1;
+            system_ticks.tick_all();
          }
          check=0;
          scale=scale-1;                 // tracking overall scalling of input data
@@ -170,6 +204,7 @@ float Approx_FFT(int in[],int N,float Frequency) {
       for(int i=0;i<a;i++) {
          out_r[i]=out_r[i]>>scale;
          out_im[i]=out_im[i]>>scale;
+         system_ticks.tick_all();
       }
       scale=0;
    }                                                   // revers all scalling we done till here,
@@ -207,6 +242,8 @@ float Approx_FFT(int in[],int N,float Frequency) {
          fm=i; fout=in[i];
       }
          /* End of the second part modified by klafyvel. */
+
+      system_ticks.tick_all();
 
       // un comment to print Amplitudes (1st value (offset) is not printed)
       // Serial.println(out_r[i]);// Serial.print("\t");
@@ -316,35 +353,6 @@ int fastRSS(int a, int b) {
 }
 //--------------------------------------------------------------------------------//
 
-class high_priority_ticks {
-   public:
-      uint16_t tick_amount = 0;
-      int prevTime = 0;
-      virtual void tick(uint16_t time) {
-         if(time - prevTime >= tick_amount) {
-            prevTime = TCNT1;
-         }
-      }
-}
-
-class tick_system {
-   public:
-      high_priority_ticks objects[10];
-      int num_objects = 0;
-      tick_system() {}
-      void add_obj(high_priority_ticks tick_object) {
-         objects[num_objects] = tick_object;
-         num_objects += 1;
-      }
-      void tick_all() {
-         for (int i = 0; i < num_objects; i++) {
-            objects[i].tick(TCNT1);
-         }
-      }
-}
-
-tick_system system_ticks();
-
 class stepper: public high_priority_ticks {
   public:
     int target;
@@ -420,7 +428,7 @@ class sampler{
       int tick(uint16_t time) {
          if (time - prevTime >= sampling_ticks) {
             // vReal[numSamples] = sin_samples[numSamples % 4];
-            vReal[numSamples] = (analogRead(pin) - 511); // int16_t(amplitude * (sin(numSamples * (twoPi * cycles) / samples) + 1));
+            vReal[numSamples] = (analogRead(pin) - 512) / 8; // int16_t(amplitude * (sin(numSamples * (twoPi * cycles) / samples)));
             // Serial.println(vReal[numSamples]);
             //vImag[numSamples] = 0;
             numSamples += 1;
@@ -454,7 +462,6 @@ class sampler{
 
 stepper myStepper(7, 6, 5, 4);
 sampler mySampler(A1);
-sampler timed_ticks[7];
 int system_len = 1;
 
 void setup() {
@@ -468,20 +475,17 @@ void setup() {
    TCCR1B = 1;
 
    Serial.println();
-   Serial.println(sampling_ticks);
-
-   timed_ticks[0] = myStepper;
 }
 
 int status = 0;
-timed_ticks system(timed_ticks, system_len);
 
 void loop() {
    system_ticks.tick_all();
+   //myStepper.tick(TCNT1);
    uint16_t StartTime = TCNT1;
    status = mySampler.tick(TCNT1);
    if (status == 1) {
-      int startIndex = 0;
+      int startIndex = 2;
       int endIndex = 4;
       uint16_t peaks[7];
       int maxIndex[7];
@@ -499,7 +503,7 @@ void loop() {
                maxIndex[i] = j;
             }
          }
-         peaks[i] = max;
+         peaks[i] = max * 2;
          startIndex = endIndex;
          endIndex *= 2;
       }
@@ -511,8 +515,8 @@ void loop() {
       /* for (int i = 0; i < samples / 2; i++) {
         Serial.print(vReal[i]);
         Serial.print(" ");
-      } */
-      // while(1);
+      }
+      while(1); */
       //Serial.println(2038 / 2 * max((peaks[4] - 1000) / 4000, 0));
       myStepper.setTarget(peaks[4]);//(int)(2038 / 2 * max((peaks[4] - 1000) / 4000, 0)));
       /*uint16_t EndTime = TCNT1;
