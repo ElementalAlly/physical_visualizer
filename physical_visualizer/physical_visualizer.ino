@@ -49,7 +49,7 @@ class high_priority_ticks {
    public:
       uint16_t tick_amount = 0;
       int prevTime = 0;
-      virtual void tick(uint16_t time) {
+      virtual int tick(uint16_t time) {
          if(time - prevTime >= tick_amount) {
             prevTime = TCNT1;
          }
@@ -58,16 +58,25 @@ class high_priority_ticks {
 
 class tick_system {
    public:
-      high_priority_ticks* objects[10];
-      int num_objects = 0;
+      high_priority_ticks* first_objects[20];
+      high_priority_ticks* last_objects[20];
+      int num_first_objects = 0;
+      int num_last_objects = 0;
       tick_system() {}
-      void add_obj(high_priority_ticks* tick_object) {
-         objects[num_objects] = tick_object;
-         num_objects += 1;
+      void add_firstobj(high_priority_ticks* tick_object) {
+         first_objects[num_first_objects] = tick_object;
+         num_first_objects += 1;
+      }
+      void add_lastobj(high_priority_ticks* tick_object) {
+         last_objects[num_last_objects] = tick_object;
+         num_last_objects++;
       }
       void tick_all() {
-         for (int i = 0; i < num_objects; i++) {
-            objects[i]->tick(TCNT1);
+         for (int i = 0; i < num_first_objects; i++) {
+            first_objects[i]->tick(TCNT1);
+         }
+         for (int i = 0; i < num_last_objects; i++) {
+            last_objects[i]->tick(TCNT1);
          }
       }
 };
@@ -424,29 +433,31 @@ class stepper: public high_priority_ticks {
         pinMode(ports[i], OUTPUT);
         digitalWrite(ports[i], LOW);
       }
-      system_ticks.add_obj(this);
+      system_ticks.add_firstobj(this);
     }
     void setTarget(int newTarget) {
       target = newTarget;
     }
-    void tick(uint16_t time) override {
+    int tick(uint16_t time) override {
       if(time - prevTime >= stepper_ticks) {
          if(currentTick < target) {
             currentState = (currentState + 1) % 4;
             for(int i=0; i<4; i++) {
-               writeToPin(ports[i], stepperStates[currentState][i]);
+               //writeToPin(ports[i], stepperStates[currentState][i]);
             }
             currentTick += 1;
          }
          else if(currentTick > target) {
             currentState = (currentState + 3) % 4;
             for(int i=0; i<4; i++) {
-               writeToPin(ports[i], stepperStates[currentState][i]);
+               //writeToPin(ports[i], stepperStates[currentState][i]);
             }
             currentTick -= 1;
          }
          prevTime = TCNT1;
+         return 1;
       }
+      return 0;
     }
     void writeToPin(int port, int state) {
       if(state == 0) {
@@ -454,6 +465,9 @@ class stepper: public high_priority_ticks {
       } else if(state == 1) {
         digitalWrite(port, HIGH);
       }
+    }
+    int get_state() {
+      return currentState;
     }
     bool atTarget() {
       return currentTick == target;
@@ -464,6 +478,46 @@ class stepper: public high_priority_ticks {
     int printState() {
       return currentState;
     }
+};
+
+class stepperGroup: public high_priority_ticks {
+   public:
+      int prevTime = 0;
+      char port;
+      stepper* group[2];
+      int pin_groups[2][4];
+      int num_steppers = 0;
+      stepperGroup(char in_port) {
+         port = in_port;
+         system_ticks.add_lastobj(this);
+      }
+      void addStepper(stepper* motor, int pin1, int pin2, int pin3, int pin4) {
+         group[num_steppers] = motor;
+         pin_groups[num_steppers][0] = pin1;
+         pin_groups[num_steppers][1] = pin2;
+         pin_groups[num_steppers][2] = pin3;
+         pin_groups[num_steppers][3] = pin4;
+         num_steppers++;
+      }
+      int tick(uint16_t time) override {
+         int port_state = B00000000;
+         for (int i = 0; i < num_steppers; i++) {
+            int state_ind;
+            state_ind = group[i]->get_state();
+            for (int j = 0; j < 4; j++) {
+               port_state += stepperStates[state_ind][j] << pin_groups[i][j];
+            }
+         }
+         switch(port) {
+            case 'B':
+               PORTB = port_state;
+               break;
+            case 'D':
+               PORTD = port_state;
+               break;
+         }
+         return 0;
+      }
 };
 
 class sampler{
@@ -511,8 +565,12 @@ class sampler{
       }
 };
 
-stepper myStepper(7, 6, 5, 4);
+stepper stepper1(7, 6, 5, 4);
 stepper stepper2(14, 15, 16, 17);
+stepper stepper3(18, 19, 20, 21);
+stepper stepper4(22, 24, 26, 28);
+stepper stepper5(23, 25, 27, 29);
+// stepperGroup group1('D');
 sampler mySampler(A1);
 int system_len = 1;
 
@@ -525,6 +583,7 @@ void setup() {
 
    TCCR1A = 0;
    TCCR1B = 1;
+   // group1.addStepper(&stepper2, 3, 2, 1, 0);
 
    Serial.println();
 }
@@ -570,8 +629,11 @@ void loop() {
       }
       while(1); */
       //Serial.println(2038 / 2 * max((peaks[4] - 1000) / 4000, 0));
-      myStepper.setTarget(peaks[4]);//(int)(2038 / 2 * max((peaks[4] - 1000) / 4000, 0)));
-      stepper2.setTarget(peaks[5]);
+      stepper1.setTarget(peaks[2]);//(int)(2038 / 2 * max((peaks[4] - 1000) / 4000, 0)));
+      stepper2.setTarget(peaks[3]);
+      stepper3.setTarget(peaks[4]);
+      stepper4.setTarget(peaks[5]);
+      stepper5.setTarget(peaks[6]);
       /*uint16_t EndTime = TCNT1;
       uint16_t eta = EndTime - StartTime;
       Serial.println(eta); */
