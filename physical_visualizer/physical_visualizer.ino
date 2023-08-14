@@ -511,8 +511,13 @@ class sampler{
       }
 };
 
-stepper myStepper(7, 6, 5, 4);
+stepper stepper1(7, 6, 5, 4);
 stepper stepper2(14, 15, 16, 17);
+stepper stepper3(18, 19, 20, 21);
+stepper stepper4(22, 24, 26, 28);
+stepper stepper5(23, 25, 27, 29);
+stepper stepper6(30, 32, 34, 36);
+stepper stepper7(31, 33, 35, 37);
 sampler mySampler(A1);
 int system_len = 1;
 
@@ -570,8 +575,14 @@ void loop() {
       }
       while(1); */
       //Serial.println(2038 / 2 * max((peaks[4] - 1000) / 4000, 0));
-      myStepper.setTarget(peaks[4]);//(int)(2038 / 2 * max((peaks[4] - 1000) / 4000, 0)));
-      stepper2.setTarget(peaks[5]);
+      
+      stepper1.setTarget(peaks[0]);//(int)(2038 / 2 * max((peaks[4] - 1000) / 4000, 0)));
+      stepper2.setTarget(peaks[1]);
+      stepper3.setTarget(peaks[2]);
+      stepper4.setTarget(peaks[3]);
+      stepper5.setTarget(peaks[4]);
+      stepper6.setTarget(peaks[5]);
+      stepper7.setTarget(peaks[6]);
       /*uint16_t EndTime = TCNT1;
       uint16_t eta = EndTime - StartTime;
       Serial.println(eta); */
