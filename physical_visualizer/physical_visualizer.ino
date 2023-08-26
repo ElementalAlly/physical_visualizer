@@ -466,6 +466,16 @@ class stepper: public high_priority_ticks {
     }
 };
 
+const double signal1Freq = 500;
+const double signal1Cycles = (((samples-1) * signal1Freq) / samplingFrequency);
+const double signal1Amp = 500;
+const double signal2Freq = 1000;
+const double signal2Cycles = (((samples-1) * signal2Freq) / samplingFrequency);
+const double signal2Amp = 300;
+const double signal3Freq = 2000;
+const double signal3Cycles = (((samples-1) * signal3Freq) / samplingFrequency);
+const double signal3Amp = 300;
+
 class sampler{
    public:
       int prevTime = 0;
@@ -479,7 +489,7 @@ class sampler{
       int tick(uint16_t time) {
          if (time - prevTime >= sampling_ticks) {
             // vReal[numSamples] = sin_samples[numSamples % 4];
-            vReal[numSamples] = (analogRead(pin) - 512) / 8; // int16_t(amplitude * (sin(numSamples * (twoPi * cycles) / samples)));
+            vReal[numSamples] = int16_t(signal1Amp * (sin(numSamples * (twoPi * signal1Cycles) / samples)) + signal2Amp * (sin(numSamples * (twoPi * signal2Cycles) / samples)) + signal3Amp * (sin(numSamples * (twoPi * signal3Cycles) / samples))); // vReal[numSamples] = (analogRead(pin) - 512) / 8; // int16_t(amplitude * (sin(numSamples * (twoPi * cycles) / samples)));
             // Serial.println(vReal[numSamples]);
             //vImag[numSamples] = 0;
             numSamples += 1;
@@ -492,7 +502,7 @@ class sampler{
               numSamples = 0;
                /* fft = arduinoFFT(vReal, vImag, samples, samplingFrequency);
                fft.Windowing(FFT_WIN_TYP_HAMMING, FFT_FORWARD);
-               fft.Compute(FFT_FORWARD);Instant noodles w/ extra veggie - 12:30
+               fft.Compute(FFT_FORWARD);
                uint16_t endTime = TCNT1;
                uint16_t eta = endTime - startTime;
                startTime = TCNT1;
