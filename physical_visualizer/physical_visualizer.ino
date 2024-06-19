@@ -31,6 +31,7 @@ const int sin_samples[4] = {0, 1, 0, -1};
 float frequency = 44000; // Actually useless for our test.
 
 const int stepsPerRevolution = 2038;
+const int maxAngleDegrees = 80;
 
 const int tickTime = 5;
 
@@ -406,28 +407,78 @@ int fastRSS(int a, int b) {
 
 class stepper: public high_priority_ticks {
   public:
+    const int maxTicks = (int)((double)stepsPerRevolution / 360 * maxAngleDegrees);
+
     int target;
+    int direction;
     int currentTick;
     int currentState;
     int ports[4];
+    int limitSwitchPin;
     int prevTime = 0;
-    uint16_t stepper_ticks = 34000;
-    stepper(int port1, int port2, int port3, int port4) {
+    uint16_t stepper_ticks = 35000;
+    stepper(int port1, int port2, int port3, int port4, int limitPin) {
       target = 0;
+      direction = 0;
       currentTick = 0;
       currentState = 0;
       ports[0] = port1;
       ports[1] = port2;
       ports[2] = port3;
       ports[3] = port4;
+      limitSwitchPin = limitPin;
       for(int i=0; i<4; i++) {
         pinMode(ports[i], OUTPUT);
         digitalWrite(ports[i], LOW);
       }
+      pinMode(limitSwitchPin, INPUT_PULLUP);
       system_ticks.add_obj(this);
     }
     void setTarget(int newTarget) {
-      target = newTarget;
+      if (direction == 0) {
+        target = newTarget;
+        if (newTarget < currentTick) {
+          direction = -1;
+        }
+        if (newTarget > currentTick) {
+          direction = 1;
+        }
+      }
+      if (direction == 1) {
+        target = max(target, newTarget);
+      }
+      if (direction == -1) {
+        target = min(target, newTarget);
+      }
+    }
+    void reset() {
+      target = -stepsPerRevolution;
+      int count = 0;
+      while (count < 5) {
+        tick(TCNT1);
+        if (digitalRead(limitSwitchPin) == LOW) {
+          count++;
+        }
+        else {
+          count = 0;
+        }
+      }
+      Serial.println("Limit switch down");
+      target = stepsPerRevolution;
+      count = 0;
+      while (count < 5) {
+        tick(TCNT1);
+        if (digitalRead(limitSwitchPin) == HIGH) {
+          count++;
+        }
+        else {
+          count = 0;
+        }
+      }
+      Serial.println("Limit switch up");
+      currentTick = -50;
+      setTarget(0);
+      Serial.println("Reset complete");
     }
     void tick(uint16_t time) override {
       if(time - prevTime >= stepper_ticks) {
@@ -444,6 +495,9 @@ class stepper: public high_priority_ticks {
                writeToPin(ports[i], stepperStates[currentState][i]);
             }
             currentTick -= 1;
+         }
+         else if(atTarget()) {
+          direction = 0;
          }
          prevTime = TCNT1;
       }
@@ -476,7 +530,7 @@ const double signal3Freq = 2000;
 const double signal3Cycles = (((samples-1) * signal3Freq) / samplingFrequency);
 const double signal3Amp = 300;
 
-class sampler{
+class sampler {
    public:
       int prevTime = 0;
       int numSamples = 0;
@@ -510,7 +564,7 @@ class sampler{
                numSamples = 0;
                uint16_t endTime2 = TCNT1;
                uint16_t eta2 = endTime2 - startTime; */
-               /*Serial.print("compute: ");
+               /* Serial.print("compute: ");
                Serial.print(eta);
                Serial.print(" magnitude: ");
                Serial.println(eta2); */
@@ -521,13 +575,13 @@ class sampler{
       }
 };
 
-stepper stepper1(7, 6, 5, 4);
+/* stepper stepper1(7, 6, 5, 4);
 stepper stepper2(14, 15, 16, 17);
 stepper stepper3(18, 19, 20, 21);
-stepper stepper4(22, 24, 26, 28);
-stepper stepper5(23, 25, 27, 29);
-stepper stepper6(30, 32, 34, 36);
-stepper stepper7(31, 33, 35, 37);
+stepper stepper4(22, 24, 26, 28); */
+stepper stepper5(23, 25, 27, 29, 31);
+/* stepper stepper6(30, 32, 34, 36);
+stepper stepper7(31, 33, 35, 37); */
 sampler mySampler(A1);
 int system_len = 1;
 
@@ -537,16 +591,29 @@ void setup() {
    while(!Serial);
    Serial.println("ready");
    Serial.println("Setup");
+   delay(1000);
+   Serial.println("---------");
 
    TCCR1A = 0;
    TCCR1B = 1;
 
    Serial.println();
+   Serial.println("Reset started");
+   stepper5.reset();
+   Serial.println("Reset completed");
+   delay(1000);
 }
 
 int status = 0;
 
 void loop() {
+  system_ticks.tick_all();
+  stepper5.setTarget(440);
+  stepper5.setTarget(100);
+  stepper5.setTarget(0);
+}
+
+/* void loop() {
    system_ticks.tick_all();
    //myStepper.tick(TCNT1);
    uint16_t StartTime = TCNT1;
@@ -556,6 +623,7 @@ void loop() {
       int endIndex = 4;
       uint16_t peaks[7];
       int maxIndex[7];
+      uint16_t reciprocal_factors[7] = {1, 1, 1, 1, 1, 1, 1};
 
       for (int i = 0; i < 7; i++) {
          /*Serial.print("Start: ");
@@ -563,14 +631,14 @@ void loop() {
          Serial.print(", End:");
          Serial.print(endIndex);
          Serial.println(); */
-         int max = 0;
+         /* int max = 0;
          for (int j = startIndex; j < endIndex; j++) {
             if(max < vReal[j]) {
                max = vReal[j];
                maxIndex[i] = j;
             }
          }
-         peaks[i] = max * 2;
+         peaks[i] = max * 2 / reciprocal_factors[i];
          startIndex = endIndex;
          endIndex *= 2;
       }
@@ -586,7 +654,7 @@ void loop() {
       while(1); */
       //Serial.println(2038 / 2 * max((peaks[4] - 1000) / 4000, 0));
       
-      stepper1.setTarget(peaks[0]);//(int)(2038 / 2 * max((peaks[4] - 1000) / 4000, 0)));
+      /* stepper1.setTarget(peaks[0]);//(int)(2038 / 2 * max((peaks[4] - 1000) / 4000, 0)));
       stepper2.setTarget(peaks[1]);
       stepper3.setTarget(peaks[2]);
       stepper4.setTarget(peaks[3]);
@@ -596,5 +664,5 @@ void loop() {
       /*uint16_t EndTime = TCNT1;
       uint16_t eta = EndTime - StartTime;
       Serial.println(eta); */
-   }
-}
+   /* }
+} */
