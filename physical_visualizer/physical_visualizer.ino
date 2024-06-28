@@ -1,5 +1,41 @@
-#include "arduinoFFT.h"
-#include "data.h"
+class high_priority_ticks {
+  public:
+    uint16_t tick_amount = 0;
+    int prevTime = 0;
+    virtual void tick(uint16_t time) {
+      if(time - prevTime >= tick_amount) {
+        prevTime = TCNT1;
+      }
+    }
+};
+
+class tick_system {
+  public:
+    const int object_cap = 10;
+    high_priority_ticks* objects[object_cap];
+    int num_objects = 0;
+    tick_system() {}
+    void add_obj(high_priority_ticks* tick_object) {
+      if (num_objects < object_cap) {
+        objects[num_objects] = tick_object;
+        num_objects += 1;
+      }
+    }
+    void tick_all() {
+      for (int i = 0; i < num_objects; i++) {
+        objects[i]->tick(TCNT1);
+      }
+    }
+};
+
+tick_system system_ticks;
+
+/* From the lookup data through the Fast RSS is not my code. I found this code through
+this repo: https://github.com/Klafyvel/AVR-FFT, but the original code is from
+this author: abhilash_patel, from this article: https://www.instructables.com/ApproxFFT-Fastest-FFT-Function-for-Arduino/
+
+The only modification I made to this code is to attempt to tick my stepper motors throughout
+the Fast Fourier Transform, to smoothly make my motors turn even through an FFT. */
 
 //---------------------------------lookup data------------------------------------//
 byte isin_data[128]=
@@ -14,35 +50,6 @@ byte isin_data[128]=
 unsigned int Pow2[14]={1,2,4,8,16,32,64,128,256,512,1024,2048,4096};
 byte RSSdata[20]={7,6,6,5,5,5,4,4,4,4,3,3,3,3,3,3,3,2,2,2};
 //---------------------------------------------------------------------------------//
-
-class high_priority_ticks {
-  public:
-    uint16_t tick_amount = 0;
-    int prevTime = 0;
-    virtual void tick(uint16_t time) {
-      if(time - prevTime >= tick_amount) {
-        prevTime = TCNT1;
-      }
-    }
-};
-
-class tick_system {
-  public:
-    high_priority_ticks* objects[10];
-    int num_objects = 0;
-    tick_system() {}
-    void add_obj(high_priority_ticks* tick_object) {
-      objects[num_objects] = tick_object;
-      num_objects += 1;
-    }
-    void tick_all() {
-      for (int i = 0; i < num_objects; i++) {
-        objects[i]->tick(TCNT1);
-      }
-    }
-};
-
-tick_system system_ticks;
 
 float Approx_FFT(int in[],int N,float Frequency) {
   uint16_t StartTime = TCNT1;
@@ -537,7 +544,7 @@ class sampler {
     int tick(uint16_t time) {
       if (time - prevTime >= sampling_ticks) {
         vReal[numSamples] = analogRead(pin) - 512;
-        // vReal[numSamples] = int16_t(signal1Amp * (sin(numSamples * (twoPi * signal1Cycles) / samples)) + signal2Amp * (sin(numSamples * (twoPi * signal2Cycles) / samples)) + signal3Amp * (sin(numSamples * (twoPi * signal3Cycles) / samples)));
+        // vReal[numSamples] = int16_t(signal1Amp * (sin(numSamples * (twoPi * signal1Cycles) / samples)) + signal2Amp * (sin(numSamples * (twoPi * signal2Cycles) / samples)) + signal3Amp * (sin(numSamples * (twoPi * signal3Cycles) / samples))); // testing with sum of the waves defined by the above frequencies and amplitudes.
         numSamples += 1;
         prevTime = TCNT1;
         if (numSamples >= samples) {
