@@ -1,7 +1,8 @@
 class high_priority_ticks {
-  public:
+  private:
     uint16_t tick_amount = 0;
     int prevTime = 0;
+  public:
     virtual void tick(uint16_t time) {
       if(time - prevTime >= tick_amount) {
         prevTime = TCNT1;
@@ -10,10 +11,11 @@ class high_priority_ticks {
 };
 
 class tick_system {
-  public:
-    const int object_cap = 10;
-    high_priority_ticks* objects[object_cap];
+  private:
+    static const int object_cap = 10;
     int num_objects = 0;
+    high_priority_ticks* objects[object_cap];
+  public:
     tick_system() {}
     void add_obj(high_priority_ticks* tick_object) {
       if (num_objects < object_cap) {
@@ -394,8 +396,6 @@ const int stepsPerRevolution = 2038;
 const int maxAngleDegrees = 80;
 const uint16_t maxTicks = (uint16_t)((double)stepsPerRevolution / 360 * maxAngleDegrees);
 
-const int tickTime = 5;
-
 int vReal[samples];
 int16_t vImag[samples];
 uint16_t amplitudes[samples];
@@ -408,16 +408,27 @@ int stepperStates[4][4] = {
 };
 
 class stepper: public high_priority_ticks {
-  public:
-
+  private:
+    uint16_t tick_amount = 35000;
+    int prevTime = 0;
     int target;
     int direction;
     int currentTick;
     int currentState;
     int ports[4];
     int limitSwitchPin;
-    int prevTime = 0;
-    uint16_t stepper_ticks = 35000;
+    int limitSwitchBounceTolerance = 5;
+    bool atTarget() {
+      return currentTick == target;
+    }
+    void writeToPin(int port, int state) {
+      if(state == 0) {
+        digitalWrite(port, LOW);
+      } else if(state == 1) {
+        digitalWrite(port, HIGH);
+      }
+    }
+  public:
     stepper(int port1, int port2, int port3, int port4, int limitPin) {
       target = 0;
       direction = 0;
@@ -455,7 +466,7 @@ class stepper: public high_priority_ticks {
     void reset() {
       target = -stepsPerRevolution;
       int count = 0;
-      while (count < 5) {
+      while (count < limitSwitchBounceTolerance) {
         tick(TCNT1);
         if (digitalRead(limitSwitchPin) == LOW) {
           count++;
@@ -467,7 +478,7 @@ class stepper: public high_priority_ticks {
       Serial.println("Limit switch down");
       target = stepsPerRevolution;
       count = 0;
-      while (count < 5) {
+      while (count < limitSwitchBounceTolerance) {
         tick(TCNT1);
         if (digitalRead(limitSwitchPin) == HIGH) {
           count++;
@@ -477,12 +488,12 @@ class stepper: public high_priority_ticks {
         }
       }
       Serial.println("Limit switch up");
-      currentTick = -50;
+      currentTick = -10;
       setTarget(0);
       Serial.println("Reset complete");
     }
     void tick(uint16_t time) override {
-      if(time - prevTime >= stepper_ticks) {
+      if(time - prevTime >= tick_amount) {
         if(currentTick < target) {
           currentState = (currentState + 1) % 4;
           for(int i=0; i<4; i++) {
@@ -503,22 +514,6 @@ class stepper: public high_priority_ticks {
         prevTime = TCNT1;
       }
     }
-    void writeToPin(int port, int state) {
-      if(state == 0) {
-        digitalWrite(port, LOW);
-      } else if(state == 1) {
-        digitalWrite(port, HIGH);
-      }
-    }
-    bool atTarget() {
-      return currentTick == target;
-    }
-    int printTick() {
-      return currentTick;
-    }
-    int printState() {
-      return currentState;
-    }
 };
 
 const double signal1Freq = 200;
@@ -532,17 +527,18 @@ const double signal3Cycles = (((samples-1) * signal3Freq) / samplingFrequency);
 const double signal3Amp = 0;
 
 class sampler {
-  public:
+  private:
+    int tick_amount = 362;
     int prevTime = 0;
     int numSamples = 0;
     int pin;
-    int sampling_ticks = 362;
+  public:
     sampler(int in_pin) {
       pin = in_pin;
       pinMode(in_pin, INPUT);
     }
     int tick(uint16_t time) {
-      if (time - prevTime >= sampling_ticks) {
+      if (time - prevTime >= tick_amount) {
         vReal[numSamples] = analogRead(pin) - 512;
         // vReal[numSamples] = int16_t(signal1Amp * (sin(numSamples * (twoPi * signal1Cycles) / samples)) + signal2Amp * (sin(numSamples * (twoPi * signal2Cycles) / samples)) + signal3Amp * (sin(numSamples * (twoPi * signal3Cycles) / samples))); // testing with sum of the waves defined by the above frequencies and amplitudes.
         numSamples += 1;
@@ -560,18 +556,17 @@ class sampler {
     }
 };
 
-/* stepper stepper1(7, 6, 5, 4);
-stepper stepper2(14, 15, 16, 17);
-stepper stepper3(18, 19, 20, 21);
-stepper stepper4(22, 24, 26, 28); */
+/* stepper stepper1(7, 6, 5, 4, 3);
+stepper stepper2(2, 14, 15, 16, 17);
+stepper stepper3(18, 19, 20, 21, 22);
+stepper stepper4(24, 26, 28, 30, 32); */
 stepper stepper5(23, 25, 27, 29, 31);
-/* stepper stepper6(30, 32, 34, 36);
-stepper stepper7(31, 33, 35, 37); */
+/* stepper stepper6(34, 36, 38, 40, 42);
+stepper stepper7(33, 35, 37, 39, 41); */
 sampler mySampler(A1);
 int system_len = 1;
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(115200);
   while(!Serial);
   Serial.println("ready");
@@ -593,7 +588,6 @@ int status = 0;
 
 void loop() {
   system_ticks.tick_all();
-  //myStepper.tick(TCNT1);
   uint16_t StartTime = TCNT1;
   status = mySampler.tick(TCNT1);
   if (status == 1) {
@@ -626,20 +620,18 @@ void loop() {
       startIndex = endIndex;
       endIndex *= 2;
     }
-    Serial.print("Raw: ");
+    /* Serial.print("Raw: ");
     for (int i = 0; i < 7; i++) {
       Serial.print(peaks[i]);
       Serial.print("     ");
     }
-    Serial.println();
+    Serial.println(); */
     Serial.print("Targets: ");
     for (int i = 0; i < 7; i++) {
       Serial.print(targets[i]);
       Serial.print("     ");
     }
     Serial.println();
-    
-    /* while(1); */
       
     /* stepper1.setTarget(peaks[0]);//(int)(2038 / 2 * max((peaks[4] - 1000) / 4000, 0)));
     stepper2.setTarget(peaks[1]);
