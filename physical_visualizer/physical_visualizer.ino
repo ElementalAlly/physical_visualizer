@@ -1,5 +1,4 @@
 #include "arduinoFFT.h"
-#include "fix_fft.h"
 #include "data.h"
 
 //---------------------------------lookup data------------------------------------//
@@ -15,37 +14,6 @@ byte isin_data[128]=
 unsigned int Pow2[14]={1,2,4,8,16,32,64,128,256,512,1024,2048,4096};
 byte RSSdata[20]={7,6,6,5,5,5,4,4,4,4,3,3,3,3,3,3,3,2,2,2};
 //---------------------------------------------------------------------------------//
-
-arduinoFFT FFT = arduinoFFT();
-
-const int samples = 512;
-const int16_t sample_power = 9;
-const int samplingFrequency = 44100;
-const int clockFrequency = 16000000;
-
-const double signalFrequency = 1000;
-const uint8_t amplitude = 5;
-double cycles = (((samples-1) * signalFrequency) / samplingFrequency);
-const int sin_samples[4] = {0, 1, 0, -1};
-
-float frequency = 44000; // Actually useless for our test.
-
-const int stepsPerRevolution = 2038;
-const int maxAngleDegrees = 80;
-const uint16_t maxTicks = (uint16_t)((double)stepsPerRevolution / 360 * maxAngleDegrees);
-
-const int tickTime = 5;
-
-int vReal[samples];
-int16_t vImag[samples];
-uint16_t amplitudes[samples];
-
-int stepperStates[4][4] = {
-  {1, 0, 0, 0},
-  {0, 1, 0, 0},
-  {0, 0, 1, 0},
-  {0, 0, 0, 1}
-};
 
 class high_priority_ticks {
   public:
@@ -406,6 +374,32 @@ int fastRSS(int a, int b) {
 }
 //--------------------------------------------------------------------------------//
 
+const int samples = 512;
+const int16_t sample_power = 9;
+const int samplingFrequency = 44100;
+const int clockFrequency = 16000000;
+
+const double signalFrequency = 1000;
+const uint8_t amplitude = 5;
+double cycles = (((samples-1) * signalFrequency) / samplingFrequency);
+
+const int stepsPerRevolution = 2038;
+const int maxAngleDegrees = 80;
+const uint16_t maxTicks = (uint16_t)((double)stepsPerRevolution / 360 * maxAngleDegrees);
+
+const int tickTime = 5;
+
+int vReal[samples];
+int16_t vImag[samples];
+uint16_t amplitudes[samples];
+
+int stepperStates[4][4] = {
+  {1, 0, 0, 0},
+  {0, 1, 0, 0},
+  {0, 0, 1, 0},
+  {0, 0, 0, 1}
+};
+
 class stepper: public high_priority_ticks {
   public:
 
@@ -543,10 +537,7 @@ class sampler {
     int tick(uint16_t time) {
       if (time - prevTime >= sampling_ticks) {
         vReal[numSamples] = analogRead(pin) - 512;
-        // vReal[numSamples] = sin_samples[numSamples % 4];
         // vReal[numSamples] = int16_t(signal1Amp * (sin(numSamples * (twoPi * signal1Cycles) / samples)) + signal2Amp * (sin(numSamples * (twoPi * signal2Cycles) / samples)) + signal3Amp * (sin(numSamples * (twoPi * signal3Cycles) / samples)));
-        // Serial.println(vReal[numSamples]);
-        //vImag[numSamples] = 0;
         numSamples += 1;
         prevTime = TCNT1;
         if (numSamples >= samples) {
@@ -555,20 +546,6 @@ class sampler {
           uint16_t endTime = TCNT1;
           uint16_t eta = endTime - startTime;
           numSamples = 0;
-          /* fft = arduinoFFT(vReal, vImag, samples, samplingFrequency);
-          fft.Windowing(FFT_WIN_TYP_HAMMING, FFT_FORWARD);
-          fft.Compute(FFT_FORWARD);
-          uint16_t endTime = TCNT1;
-          uint16_t eta = endTime - startTime;
-          startTime = TCNT1;
-          fft.ComplexToMagnitude();
-          numSamples = 0;
-          uint16_t endTime2 = TCNT1;
-          uint16_t eta2 = endTime2 - startTime; */
-          /* Serial.print("compute: ");
-          Serial.print(eta);
-          Serial.print(" magnitude: ");
-          Serial.println(eta2); */
           return 1;
         }
       }
@@ -607,13 +584,6 @@ void setup() {
 
 int status = 0;
 
-/* void loop() {
-  system_ticks.tick_all();
-  stepper5.setTarget(440);
-  stepper5.setTarget(100);
-  stepper5.setTarget(0);
-} */
-
 void loop() {
   system_ticks.tick_all();
   //myStepper.tick(TCNT1);
@@ -629,11 +599,6 @@ void loop() {
     uint16_t floors[7] = {300, 700, 700, 900, 700, 600, 300};
 
     for (int i = 0; i < 7; i++) {
-      /*Serial.print("Start: ");
-      Serial.print(startIndex);
-      Serial.print(", End:");
-      Serial.print(endIndex);
-      Serial.println(); */
       int max = 0;
       for (int j = startIndex; j < endIndex; j++) {
         if(max < vReal[j]) {
@@ -666,12 +631,8 @@ void loop() {
       Serial.print("     ");
     }
     Serial.println();
-    /* for (int i = 0; i < samples / 2; i++) {
-      Serial.print(vReal[i]);
-      Serial.print(" ");
-    }
-    while(1); */
-    //Serial.println(2038 / 2 * max((peaks[4] - 1000) / 4000, 0));
+    
+    /* while(1); */
       
     /* stepper1.setTarget(peaks[0]);//(int)(2038 / 2 * max((peaks[4] - 1000) / 4000, 0)));
     stepper2.setTarget(peaks[1]);
