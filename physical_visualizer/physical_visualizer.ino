@@ -1,43 +1,51 @@
-class high_priority_ticks {
+class highPriorityTicks {
   private:
-    uint16_t tick_amount = 0;
+    const static uint16_t tickAmount = 0;
     int prevTime = 0;
   public:
-    virtual void tick(uint16_t time) {
-      if(time - prevTime >= tick_amount) {
+    virtual void tick() {
+      uint16_t time = TCNT1;
+      if (time - prevTime >= tickAmount) {
         prevTime = TCNT1;
       }
     }
 };
 
-class tick_system {
+// Tick system contains all of the steppers, so all steppers can be ticked in one function.
+
+class tickSystem {
   private:
-    static const int object_cap = 10;
-    int num_objects = 0;
-    high_priority_ticks* objects[object_cap];
+    static const int objectCap = 10;
+    int numObjects = 0;
+    highPriorityTicks* objects[objectCap];
   public:
-    tick_system() {}
-    void add_obj(high_priority_ticks* tick_object) {
-      if (num_objects < object_cap) {
-        objects[num_objects] = tick_object;
-        num_objects += 1;
+    tickSystem() {}
+
+    void addObj(highPriorityTicks* tickObject) { // 
+      if (numObjects < objectCap) {
+        abort();
       }
+      objects[numObjects] = tickObject;
+      numObjects += 1;
     }
-    void tick_all() {
-      for (int i = 0; i < num_objects; i++) {
-        objects[i]->tick(TCNT1);
+
+    void tickAll() {
+      for (int i = 0; i < numObjects; i++) {
+        objects[i]->tick();
       }
     }
 };
 
-tick_system system_ticks;
+tickSystem systemTicks;
 
 /* From the lookup data through the Fast RSS is not my code. I found this code through
 this repo: https://github.com/Klafyvel/AVR-FFT, but the original code is from
 this author: abhilash_patel, from this article: https://www.instructables.com/ApproxFFT-Fastest-FFT-Function-for-Arduino/
 
 The only modification I made to this code is to attempt to tick my stepper motors throughout
-the Fast Fourier Transform, to smoothly make my motors turn even through an FFT. */
+the Fast Fourier Transform, to smoothly make my motors turn even through an FFT. */ 
+
+/* ======== APPROXFFT CODE STARTS HERE || CREDIT TO abhilash_patel AND Klafyvel ======== */
 
 //---------------------------------lookup data------------------------------------//
 byte isin_data[128]=
@@ -124,7 +132,7 @@ float Approx_FFT(int in[],int N,float Frequency) {
     }
   }
 
-  system_ticks.tick_all();
+  systemTicks.tickAll();
 
   x=0;
   for(int b=0;b<o;b++) {                    // bit reversal order stored in im_out array
@@ -133,14 +141,14 @@ float Approx_FFT(int in[],int N,float Frequency) {
     for(int j=0;j<c1;j++) {
       x=x+1;
       out_im[x]=out_im[j]+f;
-      system_ticks.tick_all();
+      systemTicks.tickAll();
     }
   }
 
   for(int i=0;i<a;i++) {           // update input array as per bit reverse order
     out_r[i]=in[out_im[i]];
     out_im[i]=0;
-    system_ticks.tick_all();
+    systemTicks.tickAll();
   }
 
   uint16_t EndTime = TCNT1;
@@ -157,7 +165,7 @@ float Approx_FFT(int in[],int N,float Frequency) {
     e=1024/Pow2[i+1];  //1024 is equivalent to 360 deg
     e=0-e;
     n1=0;
-    system_ticks.tick_all();
+    systemTicks.tickAll();
 
     for(int j=0;j<i10;j++) {
       c=e*j;    //c is angle as where 1024 unit is 360 deg
@@ -170,7 +178,7 @@ float Approx_FFT(int in[],int N,float Frequency) {
 
       n1=j;
 
-      system_ticks.tick_all();
+      systemTicks.tickAll();
 
       for(int k=0;k<i11;k++) {
         temp4=i10+n1;
@@ -199,7 +207,7 @@ float Approx_FFT(int in[],int N,float Frequency) {
           ti=fast_sine(out_r[temp4],c)+fast_cosine(out_im[temp4],c);
         }
 
-        system_ticks.tick_all();
+        systemTicks.tickAll();
 
         out_r[n1+i10]=out_r[n1]-tr;
         out_r[n1]=out_r[n1]+tr;
@@ -221,7 +229,7 @@ float Approx_FFT(int in[],int N,float Frequency) {
       for(int i=0;i<a;i++) {
         out_r[i]=out_r[i]>>1;
         out_im[i]=out_im[i]>>1;
-        system_ticks.tick_all();
+        systemTicks.tickAll();
       }
       check=0;
       scale=scale-1;                 // tracking overall scalling of input data
@@ -234,7 +242,7 @@ float Approx_FFT(int in[],int N,float Frequency) {
     for(int i=0;i<a;i++) {
       out_r[i]=out_r[i]>>scale;
       out_im[i]=out_im[i]>>scale;
-      system_ticks.tick_all();
+      systemTicks.tickAll();
     }
     scale=0;
   }                                                   // revers all scalling we done till here,
@@ -273,7 +281,7 @@ float Approx_FFT(int in[],int N,float Frequency) {
     }
     /* End of the second part modified by klafyvel. */
 
-    system_ticks.tick_all();
+    systemTicks.tickAll();
 
     // un comment to print Amplitudes (1st value (offset) is not printed)
     // Serial.println(out_r[i]);// Serial.print("\t");
@@ -383,33 +391,28 @@ int fastRSS(int a, int b) {
 }
 //--------------------------------------------------------------------------------//
 
-const int samples = 512;
-const int16_t sample_power = 9;
-const int samplingFrequency = 44100;
-const int clockFrequency = 16000000;
+/* ======== APPROXFFT CODE ENDS HERE || CREDIT TO abhilash_patel AND Klafyvel ======== */
 
-const double signalFrequency = 1000;
-const uint8_t amplitude = 5;
-double cycles = (((samples-1) * signalFrequency) / samplingFrequency);
+const int samples = 512;
+const int samplingFrequency = 44100;
 
 const int stepsPerRevolution = 2038;
 const int maxAngleDegrees = 80;
 const uint16_t maxTicks = (uint16_t)((double)stepsPerRevolution / 360 * maxAngleDegrees);
 
 int vReal[samples];
-int16_t vImag[samples];
 uint16_t amplitudes[samples];
 
-int stepperStates[4][4] = {
-  {1, 0, 0, 0},
-  {0, 1, 0, 0},
-  {0, 0, 1, 0},
-  {0, 0, 0, 1}
-};
-
-class stepper: public high_priority_ticks {
+class stepper: public highPriorityTicks {
   private:
-    uint16_t tick_amount = 35000;
+    const int stepperStates[4][4] = {
+      {1, 0, 0, 0},
+      {0, 1, 0, 0},
+      {0, 0, 1, 0},
+      {0, 0, 0, 1}
+    };
+    const static uint16_t tickAmount = 35000;
+    const static int limitSwitchBounceTolerance = 5;
     int prevTime = 0;
     int target;
     int direction;
@@ -417,17 +420,20 @@ class stepper: public high_priority_ticks {
     int currentState;
     int ports[4];
     int limitSwitchPin;
-    int limitSwitchBounceTolerance = 5;
+
     bool atTarget() {
       return currentTick == target;
     }
+
     void writeToPin(int port, int state) {
-      if(state == 0) {
+      if (state == 0) {
         digitalWrite(port, LOW);
-      } else if(state == 1) {
+      } 
+      else if (state == 1) {
         digitalWrite(port, HIGH);
       }
     }
+
   public:
     stepper(int port1, int port2, int port3, int port4, int limitPin) {
       target = 0;
@@ -439,13 +445,14 @@ class stepper: public high_priority_ticks {
       ports[2] = port3;
       ports[3] = port4;
       limitSwitchPin = limitPin;
-      for(int i=0; i<4; i++) {
+      for (int i=0; i<4; i++) {
         pinMode(ports[i], OUTPUT);
         digitalWrite(ports[i], LOW);
       }
       pinMode(limitSwitchPin, INPUT_PULLUP);
-      system_ticks.add_obj(this);
+      systemTicks.addObj(this);
     }
+
     void setTarget(int newTarget) {
       if (direction == 0) {
         target = newTarget;
@@ -463,11 +470,12 @@ class stepper: public high_priority_ticks {
         target = min(target, newTarget);
       }
     }
+
     void reset() {
       target = -stepsPerRevolution;
       int count = 0;
       while (count < limitSwitchBounceTolerance) {
-        tick(TCNT1);
+        tick();
         if (digitalRead(limitSwitchPin) == LOW) {
           count++;
         }
@@ -479,7 +487,7 @@ class stepper: public high_priority_ticks {
       target = stepsPerRevolution;
       count = 0;
       while (count < limitSwitchBounceTolerance) {
-        tick(TCNT1);
+        tick();
         if (digitalRead(limitSwitchPin) == HIGH) {
           count++;
         }
@@ -492,23 +500,25 @@ class stepper: public high_priority_ticks {
       setTarget(0);
       Serial.println("Reset complete");
     }
-    void tick(uint16_t time) override {
-      if(time - prevTime >= tick_amount) {
-        if(currentTick < target) {
+
+    void tick() override {
+      uint16_t time = TCNT1;
+      if (time - prevTime >= tickAmount) {
+        if (currentTick < target) {
           currentState = (currentState + 1) % 4;
-          for(int i=0; i<4; i++) {
+          for (int i=0; i<4; i++) {
             writeToPin(ports[i], stepperStates[currentState][i]);
           }
           currentTick += 1;
         }
-        else if(currentTick > target) {
+        else if (currentTick > target) {
           currentState = (currentState + 3) % 4;
-          for(int i=0; i<4; i++) {
+          for (int i=0; i<4; i++) {
             writeToPin(ports[i], stepperStates[currentState][i]);
           }
           currentTick -= 1;
         }
-        else if(atTarget()) {
+        else if (atTarget()) {
           direction = 0;
         }
         prevTime = TCNT1;
@@ -516,7 +526,9 @@ class stepper: public high_priority_ticks {
     }
 };
 
-const double signal1Freq = 200;
+/* === Testing data, defined by the sum of the sin waves defined by these parameters === */
+
+/* const double signal1Freq = 200;
 const double signal1Cycles = (((samples-1) * signal1Freq) / samplingFrequency);
 const double signal1Amp = 511;
 const double signal2Freq = 1000;
@@ -524,23 +536,35 @@ const double signal2Cycles = (((samples-1) * signal2Freq) / samplingFrequency);
 const double signal2Amp = 0;
 const double signal3Freq = 2000;
 const double signal3Cycles = (((samples-1) * signal3Freq) / samplingFrequency);
-const double signal3Amp = 0;
+const double signal3Amp = 0; */
+
+/* === Testing data done === */
+
+/* === These are sampler states. GET_SAMPLE means that sampler only gets a sample from the mic, where FFT means that an FFT has been run. === */
+
+#define GET_SAMPLE 0
+#define FFT 1
+
+/* === Sampler state end === */
 
 class sampler {
   private:
-    int tick_amount = 362;
+    const static uint16_t tickAmount = 362;
     int prevTime = 0;
     int numSamples = 0;
     int pin;
   public:
-    sampler(int in_pin) {
-      pin = in_pin;
-      pinMode(in_pin, INPUT);
+    sampler(int inPin) {
+      pin = inPin;
+      pinMode(inPin, INPUT);
     }
-    int tick(uint16_t time) {
-      if (time - prevTime >= tick_amount) {
+
+    int tick() {
+      uint16_t time = TCNT1;
+      if (time - prevTime >= tickAmount) {
         vReal[numSamples] = analogRead(pin) - 512;
-        // vReal[numSamples] = int16_t(signal1Amp * (sin(numSamples * (twoPi * signal1Cycles) / samples)) + signal2Amp * (sin(numSamples * (twoPi * signal2Cycles) / samples)) + signal3Amp * (sin(numSamples * (twoPi * signal3Cycles) / samples))); // testing with sum of the waves defined by the above frequencies and amplitudes.
+        /* Debugging, using the sum of the waves defined by the frequencies above the sampler class
+        vReal[numSamples] = int16_t(signal1Amp * (sin(numSamples * (twoPi * signal1Cycles) / samples)) + signal2Amp * (sin(numSamples * (twoPi * signal2Cycles) / samples)) + signal3Amp * (sin(numSamples * (twoPi * signal3Cycles) / samples))); */
         numSamples += 1;
         prevTime = TCNT1;
         if (numSamples >= samples) {
@@ -549,10 +573,10 @@ class sampler {
           uint16_t endTime = TCNT1;
           uint16_t eta = endTime - startTime;
           numSamples = 0;
-          return 1;
+          return FFT;
         }
       }
-      return 0;
+      return GET_SAMPLE;
     }
 };
 
@@ -564,11 +588,10 @@ stepper stepper5(23, 25, 27, 29, 31);
 /* stepper stepper6(34, 36, 38, 40, 42);
 stepper stepper7(33, 35, 37, 39, 41); */
 sampler mySampler(A1);
-int system_len = 1;
 
 void setup() {
   Serial.begin(115200);
-  while(!Serial);
+  while (!Serial) {};
   Serial.println("ready");
   Serial.println("Setup");
   delay(1000);
@@ -586,11 +609,20 @@ void setup() {
 
 int status = 0;
 
+void printList(int* list, int length) {
+  for (int i = 0; i < length; i++) {
+    Serial.print(list[i]);
+    Serial.print("     ");
+  }
+  Serial.println();
+}
+
 void loop() {
-  system_ticks.tick_all();
+  systemTicks.tickAll();
   uint16_t StartTime = TCNT1;
-  status = mySampler.tick(TCNT1);
-  if (status == 1) {
+  status = mySampler.tick();
+  if (status == FFT) {
+
     int startIndex = 2;
     int endIndex = 4;
     uint16_t peaks[7];
@@ -599,10 +631,10 @@ void loop() {
     double factors[7] = {1.1325, 0.755, 0.3775, 0.0408, 0.0368, 0.18875, 0.3775};
     uint16_t floors[7] = {300, 700, 700, 900, 700, 600, 300};
 
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 7; i++) { // make 7-bucket function
       int max = 0;
       for (int j = startIndex; j < endIndex; j++) {
-        if(max < vReal[j]) {
+        if (max < vReal[j]) {
           max = vReal[j];
           maxIndex[i] = j;
         }
@@ -620,28 +652,18 @@ void loop() {
       startIndex = endIndex;
       endIndex *= 2;
     }
+
     /* Serial.print("Raw: ");
-    for (int i = 0; i < 7; i++) {
-      Serial.print(peaks[i]);
-      Serial.print("     ");
-    }
-    Serial.println(); */
+    printList(peaks, 7); */
     Serial.print("Targets: ");
-    for (int i = 0; i < 7; i++) {
-      Serial.print(targets[i]);
-      Serial.print("     ");
-    }
-    Serial.println();
+    printList(targets, 7);
       
-    /* stepper1.setTarget(peaks[0]);//(int)(2038 / 2 * max((peaks[4] - 1000) / 4000, 0)));
+    /* stepper1.setTarget(peaks[0]);
     stepper2.setTarget(peaks[1]);
     stepper3.setTarget(peaks[2]);
     stepper4.setTarget(peaks[3]);
     stepper5.setTarget(peaks[4]);
     stepper6.setTarget(peaks[5]);
     stepper7.setTarget(peaks[6]); */
-    /*uint16_t EndTime = TCNT1;
-    uint16_t eta = EndTime - StartTime;
-    Serial.println(eta); */
   }
 }
