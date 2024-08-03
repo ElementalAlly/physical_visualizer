@@ -21,7 +21,7 @@ class tickSystem {
   public:
     tickSystem() {}
 
-    void addObj(highPriorityTicks* tickObject) { // 
+    void addObj(highPriorityTicks* tickObject) {
       if (numObjects < objectCap) {
         abort();
       }
@@ -580,18 +580,19 @@ class sampler {
     }
 };
 
-/* stepper stepper1(7, 6, 5, 4, 3);
-stepper stepper2(2, 14, 15, 16, 17);
-stepper stepper3(18, 19, 20, 21, 22);
-stepper stepper4(24, 26, 28, 30, 32); */
-stepper stepper5(23, 25, 27, 29, 31);
-/* stepper stepper6(34, 36, 38, 40, 42);
-stepper stepper7(33, 35, 37, 39, 41); */
+stepper stepper1(7, 6, 5, 4, 3);
+stepper stepper2(22, 24, 26, 28, 30);
+stepper stepper3(23, 25, 27, 29, 31);
+stepper stepper4(32, 34, 36, 38, 40);
+stepper stepper5(33, 35, 37, 39, 41);
+stepper stepper6(42, 44, 46, 48, 50);
+stepper stepper7(43, 45, 47, 49, 51);
 sampler mySampler(A1);
 
 void setup() {
   Serial.begin(115200);
   while (!Serial) {};
+  Serial.println("Heyyyyyyyy!!!");
   Serial.println("ready");
   Serial.println("Setup");
   delay(1000);
@@ -602,7 +603,13 @@ void setup() {
 
   Serial.println();
   Serial.println("Reset started");
+  stepper1.reset();
+  stepper2.reset();
+  stepper3.reset();
+  stepper4.reset();
   stepper5.reset();
+  stepper6.reset();
+  stepper7.reset();
   Serial.println("Reset completed");
   delay(1000);
 }
@@ -655,15 +662,15 @@ void loop() {
 
     /* Serial.print("Raw: ");
     printList(peaks, 7); */
-    Serial.print("Targets: ");
-    printList(targets, 7);
+    /* Serial.print("Targets: ");
+    printList(targets, 7); */
       
-    /* stepper1.setTarget(peaks[0]);
-    stepper2.setTarget(peaks[1]);
-    stepper3.setTarget(peaks[2]);
-    stepper4.setTarget(peaks[3]);
-    stepper5.setTarget(peaks[4]);
-    stepper6.setTarget(peaks[5]);
-    stepper7.setTarget(peaks[6]); */
+    stepper1.setTarget(targets[0]);
+    stepper2.setTarget(targets[1]);
+    stepper3.setTarget(targets[2]);
+    stepper4.setTarget(targets[3]);
+    stepper5.setTarget(targets[4]);
+    stepper6.setTarget(targets[5]);
+    stepper7.setTarget(targets[6]);
   }
 }
