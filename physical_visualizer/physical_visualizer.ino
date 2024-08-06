@@ -22,7 +22,7 @@ class tickSystem {
     tickSystem() {}
 
     void addObj(highPriorityTicks* tickObject) { // 
-      if (numObjects < objectCap) {
+      if (numObjects > objectCap) {
         abort();
       }
       objects[numObjects] = tickObject;
@@ -406,13 +406,13 @@ uint16_t amplitudes[samples];
 class stepper: public highPriorityTicks {
   private:
     const int stepperStates[4][4] = {
-      {1, 0, 0, 0},
-      {0, 1, 0, 0},
-      {0, 0, 1, 0},
-      {0, 0, 0, 1}
+      {1, 1, 0, 0},
+      {0, 1, 1, 0},
+      {0, 0, 1, 1},
+      {1, 0, 0, 1}
     };
-    const static uint16_t tickAmount = 35000;
-    const static int limitSwitchBounceTolerance = 5;
+    const static uint16_t tickAmount = 37000;
+    const static int limitSwitchBounceTolerance = 10;
     int prevTime = 0;
     int target;
     int direction;
@@ -661,9 +661,9 @@ void loop() {
     /* stepper1.setTarget(peaks[0]);
     stepper2.setTarget(peaks[1]);
     stepper3.setTarget(peaks[2]);
-    stepper4.setTarget(peaks[3]);
-    stepper5.setTarget(peaks[4]);
-    stepper6.setTarget(peaks[5]);
+    stepper4.setTarget(peaks[3]); */
+    stepper5.setTarget(targets[4]);
+    /* stepper6.setTarget(peaks[5]);
     stepper7.setTarget(peaks[6]); */
   }
 }
