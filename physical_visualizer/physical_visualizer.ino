@@ -1,9 +1,9 @@
-class highPriorityTicks {
+class highPriorityTicks { // parent class for time-sensitive ticks. Allows for a consistent framework for real-time systems.
   private:
     const static uint16_t tickAmount = 0;
     int prevTime = 0;
   public:
-    virtual void tick() {
+    virtual void tick() { // Represents one call through the system, checking if it should be called yet, then executing code to advance to the next state.
       uint16_t time = TCNT1;
       if (time - prevTime >= tickAmount) {
         prevTime = TCNT1;
@@ -21,15 +21,15 @@ class tickSystem {
   public:
     tickSystem() {}
 
-    void addObj(highPriorityTicks* tickObject) { // 
-      if (numObjects > objectCap) {
+    void addObj(highPriorityTicks* tickObject) { // Adding an object to this system, to be ticked together.
+      if (numObjects >= objectCap) {
         abort();
       }
       objects[numObjects] = tickObject;
       numObjects += 1;
     }
 
-    void tickAll() {
+    void tickAll() { // Tick all objects in the system.
       for (int i = 0; i < numObjects; i++) {
         objects[i]->tick();
       }
@@ -421,21 +421,12 @@ class stepper: public highPriorityTicks {
     int ports[4];
     int limitSwitchPin;
 
-    bool atTarget() {
+    bool atTarget() { // Checks if the motor is at the target.
       return currentTick == target;
     }
 
-    void writeToPin(int port, int state) {
-      if (state == 0) {
-        digitalWrite(port, LOW);
-      } 
-      else if (state == 1) {
-        digitalWrite(port, HIGH);
-      }
-    }
-
   public:
-    stepper(int port1, int port2, int port3, int port4, int limitPin) {
+    stepper(int port1, int port2, int port3, int port4, int limitPin) { // Initializes the motor. Pins are initialized for output, and low is written. The limit switch's pin is initialized to input. The stepper is then added to the tick system.
       target = 0;
       direction = 0;
       currentTick = 0;
@@ -453,7 +444,7 @@ class stepper: public highPriorityTicks {
       systemTicks.addObj(this);
     }
 
-    void setTarget(int newTarget) {
+    void setTarget(int newTarget) { // Sets the new target for the motor to go to. If the motor has started to move up and a higher peak is detected, the motor will move to the higher peak, and vice versa. Less extreme amplitudes are ignored.
       if (direction == 0) {
         target = newTarget;
         if (newTarget < currentTick) {
@@ -471,7 +462,7 @@ class stepper: public highPriorityTicks {
       }
     }
 
-    void reset() {
+    void reset() { // Resets the module's position to the bottom, just before the limit switch is pressed down.
       target = -stepsPerRevolution;
       int count = 0;
       while (count < limitSwitchBounceTolerance) {
@@ -501,20 +492,20 @@ class stepper: public highPriorityTicks {
       Serial.println("Reset complete");
     }
 
-    void tick() override {
+    void tick() override { // If enough time has passed, steps the motor once towards the target. If the target has been reached, direction is reset.
       uint16_t time = TCNT1;
       if (time - prevTime >= tickAmount) {
         if (currentTick < target) {
           currentState = (currentState + 1) % 4;
           for (int i=0; i<4; i++) {
-            writeToPin(ports[i], stepperStates[currentState][i]);
+            digitalWrite(ports[i], stepperStates[currentState][i]);
           }
           currentTick += 1;
         }
         else if (currentTick > target) {
           currentState = (currentState + 3) % 4;
           for (int i=0; i<4; i++) {
-            writeToPin(ports[i], stepperStates[currentState][i]);
+            digitalWrite(ports[i], stepperStates[currentState][i]);
           }
           currentTick -= 1;
         }
@@ -554,12 +545,12 @@ class sampler {
     int numSamples = 0;
     int pin;
   public:
-    sampler(int inPin) {
+    sampler(int inPin) { // Initializes the sampler to read from the inPin.
       pin = inPin;
       pinMode(inPin, INPUT);
     }
 
-    int tick() {
+    int tick() { // If enough time has passed, record the state of the pin. If enough samples have been collected, run the FFT and return the FFT state.
       uint16_t time = TCNT1;
       if (time - prevTime >= tickAmount) {
         vReal[numSamples] = analogRead(pin) - 512;
@@ -580,19 +571,18 @@ class sampler {
     }
 };
 
-/* stepper stepper1(7, 6, 5, 4, 3);
-stepper stepper2(2, 14, 15, 16, 17);
-stepper stepper3(18, 19, 20, 21, 22);
-stepper stepper4(24, 26, 28, 30, 32); */
-stepper stepper5(23, 25, 27, 29, 31);
-/* stepper stepper6(34, 36, 38, 40, 42);
-stepper stepper7(33, 35, 37, 39, 41); */
+stepper stepper1(7, 6, 5, 4, 3);
+stepper stepper2(22, 24, 26, 28, 30);
+stepper stepper3(23, 25, 27, 29, 31);
+stepper stepper4(32, 34, 36, 38, 40);
+stepper stepper5(33, 35, 37, 39, 41);
+stepper stepper6(42, 44, 46, 48, 50);
+stepper stepper7(43, 45, 47, 49, 51);
 sampler mySampler(A1);
 
-void setup() {
+void setup() { // Initialize registers, and reset all the modules.
   Serial.begin(115200);
-  while (!Serial) {};
-  Serial.println("ready");
+  while (!Serial) {}
   Serial.println("Setup");
   delay(1000);
   Serial.println("---------");
@@ -602,14 +592,20 @@ void setup() {
 
   Serial.println();
   Serial.println("Reset started");
+  stepper1.reset();
+  stepper2.reset();
+  stepper3.reset();
+  stepper4.reset();
   stepper5.reset();
+  stepper6.reset();
+  stepper7.reset();
   Serial.println("Reset completed");
   delay(1000);
 }
 
 int status = 0;
 
-void printList(int* list, int length) {
+void printList(int* list, int length) { // print all entries of a list of length "length".
   for (int i = 0; i < length; i++) {
     Serial.print(list[i]);
     Serial.print("     ");
@@ -617,7 +613,7 @@ void printList(int* list, int length) {
   Serial.println();
 }
 
-void loop() {
+void loop() { // Tick all motors, and tick the sampler. If the FFT has been executed, find the peaks in various ranges that scale exponentially, then sets the motors targets to the adjusted peaks.
   systemTicks.tickAll();
   uint16_t StartTime = TCNT1;
   status = mySampler.tick();
@@ -658,12 +654,12 @@ void loop() {
     Serial.print("Targets: ");
     printList(targets, 7);
       
-    /* stepper1.setTarget(peaks[0]);
-    stepper2.setTarget(peaks[1]);
-    stepper3.setTarget(peaks[2]);
-    stepper4.setTarget(peaks[3]); */
+    stepper1.setTarget(targets[0]);
+    stepper2.setTarget(targets[1]);
+    stepper3.setTarget(targets[2]);
+    stepper4.setTarget(targets[3]);
     stepper5.setTarget(targets[4]);
-    /* stepper6.setTarget(peaks[5]);
-    stepper7.setTarget(peaks[6]); */
+    stepper6.setTarget(targets[5]);
+    stepper7.setTarget(targets[6]);
   }
 }
