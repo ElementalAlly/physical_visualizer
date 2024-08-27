@@ -17,6 +17,7 @@ class tickSystem {
   private:
     static const int objectCap = 10;
     int numObjects = 0;
+    int currentObject = 0;
     highPriorityTicks* objects[objectCap];
   public:
     tickSystem() {}
@@ -33,6 +34,11 @@ class tickSystem {
       for (int i = 0; i < numObjects; i++) {
         objects[i]->tick();
       }
+    }
+    
+    void tickNext() {
+      objects[currentObject]->tick();
+      currentObject = (currentObject + 1) % numObjects;
     }
 };
 
@@ -393,8 +399,16 @@ int fastRSS(int a, int b) {
 
 /* ======== APPROXFFT CODE ENDS HERE || CREDIT TO abhilash_patel AND Klafyvel ======== */
 
+// Clearing and setting bits
+#ifndef cbi
+#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
+#endif
+#ifndef sbi
+#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+#endif
+
 const int samples = 512;
-const int samplingFrequency = 44100;
+const int samplingFrequency = 16000;
 
 const int stepsPerRevolution = 2038;
 const int maxAngleDegrees = 80;
@@ -487,7 +501,7 @@ class stepper: public highPriorityTicks {
         }
       }
       Serial.println("Limit switch up");
-      currentTick = -10;
+      currentTick = -50;
       setTarget(0);
       Serial.println("Reset complete");
     }
@@ -519,7 +533,7 @@ class stepper: public highPriorityTicks {
 
 /* === Testing data, defined by the sum of the sin waves defined by these parameters === */
 
-/* const double signal1Freq = 200;
+/* const double signal1Freq = 440;
 const double signal1Cycles = (((samples-1) * signal1Freq) / samplingFrequency);
 const double signal1Amp = 511;
 const double signal2Freq = 1000;
@@ -527,7 +541,8 @@ const double signal2Cycles = (((samples-1) * signal2Freq) / samplingFrequency);
 const double signal2Amp = 0;
 const double signal3Freq = 2000;
 const double signal3Cycles = (((samples-1) * signal3Freq) / samplingFrequency);
-const double signal3Amp = 0; */
+const double signal3Amp = 0;
+const double twoPi = 6.283185307; */
 
 /* === Testing data done === */
 
@@ -540,7 +555,7 @@ const double signal3Amp = 0; */
 
 class sampler {
   private:
-    const static uint16_t tickAmount = 362;
+    const static uint16_t tickAmount = 600; // 726;
     int prevTime = 0;
     int numSamples = 0;
     int pin;
@@ -553,9 +568,10 @@ class sampler {
     int tick() { // If enough time has passed, record the state of the pin. If enough samples have been collected, run the FFT and return the FFT state.
       uint16_t time = TCNT1;
       if (time - prevTime >= tickAmount) {
+        // Serial.println(time - prevTime);
         vReal[numSamples] = analogRead(pin) - 512;
-        /* Debugging, using the sum of the waves defined by the frequencies above the sampler class
-        vReal[numSamples] = int16_t(signal1Amp * (sin(numSamples * (twoPi * signal1Cycles) / samples)) + signal2Amp * (sin(numSamples * (twoPi * signal2Cycles) / samples)) + signal3Amp * (sin(numSamples * (twoPi * signal3Cycles) / samples))); */
+        // Debugging, using the sum of the waves defined by the frequencies above the sampler class
+        // vReal[numSamples] = int16_t(signal1Amp * (sin(numSamples * (twoPi * signal1Cycles) / samples)) + signal2Amp * (sin(numSamples * (twoPi * signal2Cycles) / samples)) + signal3Amp * (sin(numSamples * (twoPi * signal3Cycles) / samples)));
         numSamples += 1;
         prevTime = TCNT1;
         if (numSamples >= samples) {
@@ -576,7 +592,7 @@ stepper stepper2(22, 24, 26, 28, 30);
 stepper stepper3(23, 25, 27, 29, 31);
 stepper stepper4(32, 34, 36, 38, 40);
 stepper stepper5(33, 35, 37, 39, 41);
-stepper stepper6(42, 44, 46, 48, 50);
+stepper stepper6(42, 44, 46, 48, 50); 
 stepper stepper7(43, 45, 47, 49, 51);
 sampler mySampler(A1);
 
@@ -587,8 +603,14 @@ void setup() { // Initialize registers, and reset all the modules.
   delay(1000);
   Serial.println("---------");
 
+  // setting up the cpu clock to be read for real-time systems
   TCCR1A = 0;
   TCCR1B = 1;
+
+  // Setting the ADC clock circuit multiplier to 16, for faster Analog Reads
+  sbi(ADCSRA,ADPS2);
+  cbi(ADCSRA,ADPS1);
+  cbi(ADCSRA,ADPS0);
 
   Serial.println();
   Serial.println("Reset started");
@@ -614,8 +636,7 @@ void printList(int* list, int length) { // print all entries of a list of length
 }
 
 void loop() { // Tick all motors, and tick the sampler. If the FFT has been executed, find the peaks in various ranges that scale exponentially, then sets the motors targets to the adjusted peaks.
-  systemTicks.tickAll();
-  uint16_t StartTime = TCNT1;
+  systemTicks.tickNext();
   status = mySampler.tick();
   if (status == FFT) {
 
@@ -624,8 +645,8 @@ void loop() { // Tick all motors, and tick the sampler. If the FFT has been exec
     uint16_t peaks[7];
     int targets[7];
     int maxIndex[7];
-    double factors[7] = {1.1325, 0.755, 0.3775, 0.0408, 0.0368, 0.18875, 0.3775};
-    uint16_t floors[7] = {300, 700, 700, 900, 700, 600, 300};
+    double factors[7] = {(double)maxTicks / 3000.0, (double)maxTicks / 8000.0, (double)maxTicks / 8000.0, (double)maxTicks / 8000.0, (double)maxTicks / 8000.0, (double)maxTicks / 8000.0, (double)maxTicks / 8000.0};
+    uint16_t floors[7] = {0, 0, 0, 0, 0, 0, 0};
 
     for (int i = 0; i < 7; i++) { // make 7-bucket function
       int max = 0;
@@ -651,8 +672,8 @@ void loop() { // Tick all motors, and tick the sampler. If the FFT has been exec
 
     /* Serial.print("Raw: ");
     printList(peaks, 7); */
-    Serial.print("Targets: ");
-    printList(targets, 7);
+    /* Serial.print("Targets: ");
+    printList(targets, 7); */
       
     stepper1.setTarget(targets[0]);
     stepper2.setTarget(targets[1]);
