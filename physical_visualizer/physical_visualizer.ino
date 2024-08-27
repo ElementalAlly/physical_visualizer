@@ -648,7 +648,7 @@ void loop() { // Tick all motors, and tick the sampler. If the FFT has been exec
     uint16_t peaks[7];
     int targets[7];
     int maxIndex[7];
-    double factors[7] = {(double)maxTicks / 3000.0, (double)maxTicks / 8000.0, (double)maxTicks / 8000.0, (double)maxTicks / 8000.0, (double)maxTicks / 8000.0, (double)maxTicks / 8000.0, (double)maxTicks / 8000.0};
+    double factors[7] = {(double)maxTicks / 3000.0, (double)maxTicks / 8000.0, (double)maxTicks / 8000.0, (double)maxTicks / 8000.0, (double)maxTicks / 8000.0, (double)maxTicks / 6000.0, (double)maxTicks / 4000.0};
     uint16_t floors[7] = {0, 0, 0, 0, 0, 0, 0};
 
     for (int i = 0; i < 7; i++) { // make 7-bucket function
