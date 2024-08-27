@@ -503,7 +503,6 @@ class stepper: public highPriorityTicks {
       Serial.println("Limit switch up");
       currentTick = -50;
       setTarget(0);
-      Serial.println("Reset complete");
     }
 
     void tick() override { // If enough time has passed, steps the motor once towards the target. If the target has been reached, direction is reset.
@@ -617,6 +616,7 @@ void setup() { // Initialize registers, and reset all the modules.
 
   Serial.println();
   Serial.println("Reset started");
+  Serial.println("===========");
   stepper1.reset();
   stepper2.reset();
   stepper3.reset();
@@ -624,6 +624,7 @@ void setup() { // Initialize registers, and reset all the modules.
   stepper5.reset();
   stepper6.reset();
   stepper7.reset();
+  Serial.println("===========");
   Serial.println("Reset completed");
   delay(1000);
 }
