@@ -411,7 +411,7 @@ const int samples = 512;
 const int samplingFrequency = 16000;
 
 const int stepsPerRevolution = 2038;
-const int maxAngleDegrees = 80;
+const int maxAngleDegrees = 75;
 const uint16_t maxTicks = (uint16_t)((double)stepsPerRevolution / 360 * maxAngleDegrees);
 
 int vReal[samples];
