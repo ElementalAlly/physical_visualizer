@@ -509,6 +509,9 @@ class stepper: public highPriorityTicks {
     void tick() override { // If enough time has passed, steps the motor once towards the target. If the target has been reached, direction is reset.
       uint16_t time = TCNT1;
       if (time - prevTime >= tickAmount) {
+        if (digitalRead(limitSwitchPin) == LOW) {
+          currentTick = -50;
+        }
         if (currentTick < target) {
           currentState = (currentState + 1) % 4;
           for (int i=0; i<4; i++) {
