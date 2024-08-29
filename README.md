@@ -19,10 +19,63 @@ A demo of the project is available [here]().
  - 1 Micro USB Power Adapter (I used [this one](https://www.amazon.com/WMYCONGCONG-Interface-Adapter-2-54mm-Breakout/dp/B082PDD79D/).)
  - 3.5 mm Audio Jack (I used [this one](https://www.amazon.com/Monoprice-3-5mm-Stereo-Plug-Cable/dp/B003NN1XZM/).)
  - 0.22 Micro-farad Capacitor ([This one](https://www.amazon.com/10pcs-0-22uF-Metallized-Polyester-Capacitors/dp/B00TX42OMQ/) should be fine.)
- - 2 100K Ohm Resistor ([This pack has enough](https://www.amazon.com/100K-Resistor-Tolerance-Resistors-Resistance/dp/B0B4JDHXC9/).)
+ - 2 100K Ohm Resistor ([This pack](https://www.amazon.com/100K-Resistor-Tolerance-Resistors-Resistance/dp/B0B4JDHXC9/) has enough.)
+
+# Module Construction
+Print out at least 7 of each component in 3DModels/basic_module. (I would recommend some spares of the two interface gears and the motor case. These snap somewhat easily.)
+
+Put each of them together as shown in [this guide](https://docs.google.com/presentation/d/1bTP2g964ffissnCn6Xr_7jywn2T2i3r7LuhRdSlXD80/edit?usp=sharing)
+
+# Wiring Tutorial
+There are a few sections of wiring: Module Power, Module signals, and Input Reading.
+
+## Input Reading
+
+This circuit is the most complex out of all of them. While the rest power or signal components where the circuitry is already made, this is a circuit you will have to build yourself. The circuit looks like this:
+
+![Input circuit, check link below if it doesn't load](https://github.com/ElementalAlly/physical_visualizer/raw/main/docs/InputCircuit.png)
+
+If the image doesn't load, check [this link](https://forum.arduino.cc/t/how-to-read-data-from-audio-jack/458301/3), and exclude R1.
+
+The best way to get the audio signal and ground are to cut the audio extension cable in half and solder the two halves facing the same direction up on a prototype board, like the one seen on the end of the arduino hat I recommended. Then, solder the matching connections back together, and solder another two wires, one attaching to ground and the other attaching to the left signal. These can then be wired in the way of the diagram, and audio signal can be both received from a computer, and duplicated onto speakers with an audio jack.
+
+From there, use the components from the materials to build the circuit!
+
+## Module Power
+This contains two major power circuits we need to take into account: Motor power and Limit Switch Power. There are two power sources for the entire system because 7 motors draw too much power and can disable the arduino accidentally. This is where the micro-USB power module comes into practice.
+
+Power each motor using the Micro USB power adapter, as shown in the diagram. Use the same power source for all motors.
+
+![Motor is powered through the Micro USB Adapter](https://github.com/ElementalAlly/physical_visualizer/raw/main/docs/MotorPower.png)
+
+Connect each limit switch's ground to the ground of the arduino, as shown in this diagram:
+
+![Limit switch ground is connected to the Arduino Ground](https://github.com/ElementalAlly/physical_visualizer/raw/main/docs/LimitSwitchPower.png)
+
+## Module Signals
+Wire the motor signal wires to the Arduino like this:
+
+If in the code, there's a motor declared like this:
+
+```
+stepper(a, b, c, d, e)
+```
+
+Wire your motor and limit switch signal like this:
+
+![a to IN1, b to IN2, c to IN3, d to IN4, e to Limit Switch Signal](https://github.com/ElementalAlly/physical_visualizer/raw/main/docs/MotorSignal.png)
+
+For example, when you encounter:
+
+```
+stepper(7, 6, 5, 4, 3)
+```
+
+Wire IN1 to 7, IN2 to 6, IN3 to 5, IN4 to 4, and the Limit Switch Signal to 3.
+
+Do this for every module, following what is in the code. Once all the motors are connected, you can move on to the code!
 
 # Coding Tutorial
-
 Download [Arduino IDE](https://www.arduino.cc/en/software) and open the physical_visualizer/physical_visualizer.ino file in it. Once everything has been wired, upload it and run it! Your modules should go up and down with the music that's played through the audio jack!
 
 For the Approx_FFT Section, credit goes to abhilash_patel for the algorithm, and Klafyvel for some modifications and writing a blog post to show the algorithm compared to others. Klafyvel's article is here: <https://klafyvel.me/blog/articles/fft-arduino/>, and their repo is here: <https://github.com/Klafyvel/AVR-FFT/tree/main>. The original instructable with this code is here: <https://www.instructables.com/ApproxFFT-Fastest-FFT-Function-for-Arduino/>.
