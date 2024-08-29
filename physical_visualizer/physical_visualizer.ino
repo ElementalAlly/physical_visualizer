@@ -481,6 +481,7 @@ class stepper: public highPriorityTicks {
       int count = 0;
       while (count < limitSwitchBounceTolerance) {
         tick();
+        currentTick = 0;
         if (digitalRead(limitSwitchPin) == LOW) {
           count++;
         }
@@ -493,6 +494,7 @@ class stepper: public highPriorityTicks {
       count = 0;
       while (count < limitSwitchBounceTolerance) {
         tick();
+        currentTick = 0;
         if (digitalRead(limitSwitchPin) == HIGH) {
           count++;
         }
