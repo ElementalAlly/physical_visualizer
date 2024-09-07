@@ -94,13 +94,13 @@ For the Approx_FFT Section, credit goes to abhilash_patel for the algorithm, and
 The sampling frequency, the number of samples per FFT, and the way the code groups the frequency buckets, make the individual bars react to approximately these following frequencies:
 
 ```
-stepper1: 60 -> 120
-stepper2: 120 -> 250
-stepper3: 250 -> 500
-stepper4: 500 -> 1000
-stepper5: 1000 -> 2000
-stepper6: 2000 -> 4000
-stepper7: 4000 -> 8000
+stepper1: 60 Hz -> 120 Hz
+stepper2: 120 Hz -> 250 Hz
+stepper3: 250 Hz -> 500 Hz
+stepper4: 500 Hz -> 1000 Hz
+stepper5: 1000 Hz -> 2000 Hz
+stepper6: 2000 Hz -> 4000 Hz
+stepper7: 4000 Hz -> 8000 Hz
 ```
 
-This is limited to 8000 because of the arduino platform having a cpu that isn't fast enough to sample at a fast enough rate to detect higher frequencies.
+This is limited to 8000 Hz because of the arduino platform having a cpu that isn't fast enough to sample at a fast enough rate to detect higher frequencies.
