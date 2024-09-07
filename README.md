@@ -24,7 +24,7 @@ A demo of the project is available [here]().
 # Module Construction
 Print out at least 7 of each component in 3DModels/basic_module. (I would recommend some spares of the two interface gears and the motor case. These snap somewhat easily.)
 
-Put each of them together as shown in [this guide](https://docs.google.com/presentation/d/1bTP2g964ffissnCn6Xr_7jywn2T2i3r7LuhRdSlXD80/edit?usp=sharing)
+Put each of them together as shown in [this guide](https://github.com/ElementalAlly/physical_visualizer/raw/main/docs/moduleBuildingGuide.pdf).
 
 # Wiring Tutorial
 There are a few sections of wiring: Module Power, Module signals, and Input Reading.
