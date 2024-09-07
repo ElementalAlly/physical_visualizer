@@ -30,12 +30,15 @@ Put each of them together as shown in [this guide](https://github.com/ElementalA
 There are a few sections of wiring: Module Power, Module signals, and Input Reading.
 
 ## Input Reading
-
 This circuit is the most complex out of all of them. While the rest power or signal components where the circuitry is already made, this is a circuit you will have to build yourself. The circuit looks like this:
 
 ![Input circuit, check link below if it doesn't load](https://github.com/ElementalAlly/physical_visualizer/raw/main/docs/InputCircuit.png)
 
 If the image doesn't load, check [this link](https://forum.arduino.cc/t/how-to-read-data-from-audio-jack/458301/3), and exclude R1.
+
+This shifts the input from centering at 0 volts to centering at 2.5 volts, which allows the Arduino to read the entire input from its analog pins.
+
+We use the left audio signal because it's most commonly used as mono.
 
 The best way to get the audio signal and ground are to cut the audio extension cable in half and solder the two halves facing the same direction up on a prototype board, like the one seen on the end of the arduino hat I recommended. Then, solder the matching connections back together, and solder another two wires, one attaching to ground and the other attaching to the left signal. These can then be wired in the way of the diagram, and audio signal can be both received from a computer, and duplicated onto speakers with an audio jack.
 
@@ -53,15 +56,13 @@ Connect each limit switch's ground to the ground of the arduino, as shown in thi
 ![Limit switch ground is connected to the Arduino Ground](https://github.com/ElementalAlly/physical_visualizer/raw/main/docs/LimitSwitchPower.png)
 
 ## Module Signals
-Wire the motor signal wires to the Arduino like this:
-
-If in the code, there's a motor declared like this:
+When a motor is declared like this:
 
 ```
-stepper(a, b, c, d, e)
+stepper stepper1(a, b, c, d, e)
 ```
 
-Wire your motor and limit switch signal like this:
+Wire your motor and limit switch signal of module 1 like this:
 
 ![a to IN1, b to IN2, c to IN3, d to IN4, e to Limit Switch Signal](https://github.com/ElementalAlly/physical_visualizer/raw/main/docs/MotorSignal.png)
 
@@ -73,9 +74,33 @@ stepper(7, 6, 5, 4, 3)
 
 Wire IN1 to 7, IN2 to 6, IN3 to 5, IN4 to 4, and the Limit Switch Signal to 3.
 
-Do this for every module, following what is in the code. Once all the motors are connected, you can move on to the code!
+All the motors' declarations are these:
+
+```
+stepper stepper1(7, 6, 5, 4, 3);
+stepper stepper2(22, 24, 26, 28, 30);
+stepper stepper3(23, 25, 27, 29, 31);
+stepper stepper4(32, 34, 36, 38, 40);
+stepper stepper5(33, 35, 37, 39, 41);
+stepper stepper6(42, 44, 46, 48, 50);
+stepper stepper7(43, 45, 47, 49, 51);
+```
 
 # Coding Tutorial
 Download [Arduino IDE](https://www.arduino.cc/en/software) and open the physical_visualizer/physical_visualizer.ino file in it. Once everything has been wired, upload it and run it! Your modules should go up and down with the music that's played through the audio jack!
 
-For the Approx_FFT Section, credit goes to abhilash_patel for the algorithm, and Klafyvel for some modifications and writing a blog post to show the algorithm compared to others. Klafyvel's article is here: <https://klafyvel.me/blog/articles/fft-arduino/>, and their repo is here: <https://github.com/Klafyvel/AVR-FFT/tree/main>. The original instructable with this code is here: <https://www.instructables.com/ApproxFFT-Fastest-FFT-Function-for-Arduino/>.
+For the Approx_FFT Section, credit goes to abhilash_patel for the algorithm, and Klafyvel for some modifications and writing a blog post to show the algorithm compared to others. abhilash's original instructable with this code is here: <https://www.instructables.com/ApproxFFT-Fastest-FFT-Function-for-Arduino/>. Klafyvel's article is here: <https://klafyvel.me/blog/articles/fft-arduino/>, and their repo is here: <https://github.com/Klafyvel/AVR-FFT/tree/main>.
+
+The sampling frequency, the number of samples per FFT, and the way the code groups the frequency buckets, make the individual bars react to approximately these following frequencies:
+
+```
+stepper1: 60 -> 120
+stepper2: 120 -> 250
+stepper3: 250 -> 500
+stepper4: 500 -> 1000
+stepper5: 1000 -> 2000
+stepper6: 2000 -> 4000
+stepper7: 4000 -> 8000
+```
+
+This is limited to 8000 because of the arduino platform having a cpu that isn't fast enough to sample at a fast enough rate to detect higher frequencies.
