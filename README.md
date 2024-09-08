@@ -3,7 +3,7 @@
 # Intro
 This is a music visualizer that captures the frequencies of music playing through an audio jack output. It uses an Arduino for FFT processing and motor commands. Stepper motors are geared into a module that moves a bar up and down, according to their corresponding frequency.
 
-A demo of the project is available [here]().
+A demo of the project is available [here](https://www.youtube.com/watch?v=0NpDhRlfrKM).
 
 # Materials
  - Access to a 3D printer (I used an [Ender 3 Neo](https://www.creality.com/products/ender-3-neo-3d-printer), but other precise 3D printers should print fine.)
